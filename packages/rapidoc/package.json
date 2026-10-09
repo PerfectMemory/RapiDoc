@@ -1,5 +1,5 @@
 {
-  "name": "rapidoc",
+  "name": "@pm/rapidoc",
   "version": "10.1.0",
   "description": "RapiDoc - Open API spec viewer with built in console",
   "author": "Mrinmoy Majumdar <mrin9@yahoo.com>",
@@ -36,6 +36,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "registry": "https://artefacts.si.perfect-memory.com/repository/npm-pm-public/"
+  },
   "scripts": {
     "build": "vite build",
     "build:dev": "vite build --mode development",
