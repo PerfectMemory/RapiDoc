@@ -34,6 +34,8 @@ publish:
     - job: build
       artifacts: true
   script:
+    # Only dist/ is passed by the build job (not its package.json change): set the version from the tag again
+    - npm pkg set version="${CI_COMMIT_TAG#v}" --workspace=@pm/rapidoc
     - cd packages/rapidoc
     # --tag next for prereleases (npm refuses to publish a prerelease as "latest" implicitly)
     - |
