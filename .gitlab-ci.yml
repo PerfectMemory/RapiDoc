@@ -11,14 +11,15 @@ install:
   script:
     - npm ci --no-audit --no-fund
 
-# Tag pipelines only ("v<version>", e.g. v10.1.0-pm.0): the tag must match packages/rapidoc/package.json
+# Tag pipelines only ("v<version>", e.g. v10.1.0-pm.0): the version comes from the tag, whatever packages/rapidoc/package.json says.
+# Release with "npm version <version>" at the repository root (commits, tags v<version>, pushes to the gitlab remote).
 build:
   extends: .build
   needs:
     - job: install
       artifacts: true
   script:
-    - test "${CI_COMMIT_TAG#v}" = "$(node -p "require('./packages/rapidoc/package.json').version")"
+    - npm pkg set version="${CI_COMMIT_TAG#v}" --workspace=@pm/rapidoc
     - npm run build:rapidoc
   artifacts:
     expire_in: 1d
