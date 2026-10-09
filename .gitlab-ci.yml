@@ -5,11 +5,13 @@ include:
     ref: release/v1
     file: files/templates/node-library.yml
 
-# The repository is an npm workspaces monorepo (package-lock.json), not a yarn one: override the template install job
+# The repository is an npm workspaces monorepo (package-lock.json), not a yarn one: override the template install job.
+# Only install @pm/rapidoc: a full "npm ci" links the bin of the other workspaces (rapidoc-cli) and fails with
+# "EPERM: chmod" because the checkout is not owned by the CI user. The docs and the CLI are not published anyway.
 install:
   extends: .install
   script:
-    - npm ci --no-audit --no-fund
+    - npm ci --workspace=@pm/rapidoc --no-audit --no-fund
 
 # Tag pipelines only ("v<version>", e.g. v10.1.0-pm.0): the version comes from the tag, whatever packages/rapidoc/package.json says.
 # Release with "npm version <version>" at the repository root (commits, tags v<version>, pushes to the gitlab remote).
