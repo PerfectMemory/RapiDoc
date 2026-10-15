@@ -169,16 +169,26 @@ export default class RapiDoc extends LitElement {
 
   constructor() {
     super();
-    const intersectionObserverOptions: IntersectionObserverInit = {
-      rootMargin: '0px 0px -50% 0px', // Target the top 50% reading zone of viewport
-      threshold: 0,
-    };
     this.showSummaryWhenCollapsed = true;
     this._intersectingElements = new Map();
     // Will activate intersection observer only after spec load and hash analyze
     // to scroll to the proper element without being reverted by observer behavior
     this.isIntersectionObserverActive = false;
-    this.intersectionObserver = new IntersectionObserver((entries: IntersectionObserverEntry[]) => {
+    this.intersectionObserver = this.createIntersectionObserver();
+  }
+
+  /**
+   * The observer must be relative to the scrolling container (`.main-content`) and not to the browser viewport,
+   * otherwise the reading zone depends on what surrounds the component in the page (header, breadcrumb...).
+   * The container does not exist at construction time, so the observer is re-created before observing (see `observeExpandedContent`).
+   */
+  createIntersectionObserver(): IntersectionObserver {
+    const intersectionObserverOptions: IntersectionObserverInit = {
+      root: this.shadowRoot?.querySelector('.main-content') ?? null,
+      rootMargin: '0px 0px -50% 0px', // Target the top 50% reading zone of the scrolling container
+      threshold: 0,
+    };
+    return new IntersectionObserver((entries: IntersectionObserverEntry[]) => {
       this.onIntersect(entries);
     }, intersectionObserverOptions);
   }
@@ -930,6 +940,8 @@ export default class RapiDoc extends LitElement {
   }
 
   observeExpandedContent() {
+    this.intersectionObserver.disconnect();
+    this.intersectionObserver = this.createIntersectionObserver();
     // Main Container
     const observeOverviewEls = this.shadowRoot!.querySelectorAll('.observe-me');
     observeOverviewEls.forEach((targetEl) => {
@@ -1328,9 +1340,11 @@ export default class RapiDoc extends LitElement {
 
     const visibleHeadings: { el: Element; top: number }[] = [];
     const scrolledPast: { el: Element; top: number }[] = [];
+    // Positions are relative to the top of the scrolling container, not of the browser viewport
+    const rootTop = this.shadowRoot!.querySelector('.main-content')?.getBoundingClientRect().top ?? 0;
 
     for (const el of activeCandidates) {
-      const top = el.getBoundingClientRect().top;
+      const top = el.getBoundingClientRect().top - rootTop;
       if (top >= 0) {
         visibleHeadings.push({ el, top });
       } else {
