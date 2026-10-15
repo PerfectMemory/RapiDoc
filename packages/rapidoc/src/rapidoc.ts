@@ -160,6 +160,8 @@ export default class RapiDoc extends LitElement {
   showSummaryWhenCollapsed: string | boolean;
   _intersectingElements: Map<string, Element>;
   _intersectionRaf?: number;
+  _scrollTopListener?: () => void;
+  _scrollTopRoot?: Element;
   isIntersectionObserverActive: boolean;
   intersectionObserver: IntersectionObserver;
   timeoutId?: ReturnType<typeof setTimeout>;
@@ -939,9 +941,36 @@ export default class RapiDoc extends LitElement {
     }
   }
 
+  /**
+   * The intersection observer does not fire when the scroll reaches or leaves the top of the content, as nothing enters
+   * nor leaves the reading zone then, so the navigation is also updated whenever the top is reached or left.
+   */
+  watchScrollTop() {
+    const root = this.shadowRoot!.querySelector('.main-content');
+    if (!root) {
+      return;
+    }
+    if (this._scrollTopListener) {
+      this._scrollTopRoot?.removeEventListener('scroll', this._scrollTopListener);
+    }
+    let wasAtTop = root.scrollTop <= 0;
+    this._scrollTopRoot = root;
+    this._scrollTopListener = () => {
+      const isAtTop = root.scrollTop <= 0;
+      if (isAtTop !== wasAtTop) {
+        wasAtTop = isAtTop;
+        if (this.isIntersectionObserverActive) {
+          this.updateActiveNavItem();
+        }
+      }
+    };
+    root.addEventListener('scroll', this._scrollTopListener, { passive: true });
+  }
+
   observeExpandedContent() {
     this.intersectionObserver.disconnect();
     this.intersectionObserver = this.createIntersectionObserver();
+    this.watchScrollTop();
     // Main Container
     const observeOverviewEls = this.shadowRoot!.querySelectorAll('.observe-me');
     observeOverviewEls.forEach((targetEl) => {
@@ -1338,20 +1367,6 @@ export default class RapiDoc extends LitElement {
       return;
     }
 
-<<<<<<< Updated upstream
-    const visibleHeadings: { el: Element; top: number }[] = [];
-    const scrolledPast: { el: Element; top: number }[] = [];
-    // Positions are relative to the top of the scrolling container, not of the browser viewport
-    const rootTop = this.shadowRoot!.querySelector('.main-content')?.getBoundingClientRect().top ?? 0;
-
-    for (const el of activeCandidates) {
-      const top = el.getBoundingClientRect().top - rootTop;
-      if (top >= 0) {
-        visibleHeadings.push({ el, top });
-      } else {
-        scrolledPast.push({ el, top });
-      }
-=======
     this.updateActiveNavItem();
   }
 
@@ -1367,12 +1382,13 @@ export default class RapiDoc extends LitElement {
     const root = this.shadowRoot!.querySelector('.main-content');
     if (!root) {
       return;
->>>>>>> Stashed changes
     }
     const rootRect = root.getBoundingClientRect();
     const readingLine = rootRect.top + rootRect.height / 2;
     const observed = Array.from(this.shadowRoot!.querySelectorAll('.observe-me')).filter((el) => el.getClientRects().length > 0);
-    const bestEl = observed.filter((el) => el.getBoundingClientRect().top <= readingLine).pop() ?? observed[0];
+    // At the very top of the content nothing has been scrolled past yet: the first element (the overview) is the active one,
+    // even though its first heading is already above the reading line
+    const bestEl = root.scrollTop <= 0 ? observed[0] : (observed.filter((el) => el.getBoundingClientRect().top <= readingLine).pop() ?? observed[0]);
     if (!bestEl) {
       return;
     }
