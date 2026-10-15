@@ -1338,30 +1338,28 @@ export default class RapiDoc extends LitElement {
       return;
     }
 
-    const visibleHeadings: { el: Element; top: number }[] = [];
-    const scrolledPast: { el: Element; top: number }[] = [];
-    // Positions are relative to the top of the scrolling container, not of the browser viewport
-    const rootTop = this.shadowRoot!.querySelector('.main-content')?.getBoundingClientRect().top ?? 0;
+    this.updateActiveNavItem();
+  }
 
-    for (const el of activeCandidates) {
-      const top = el.getBoundingClientRect().top - rootTop;
-      if (top >= 0) {
-        visibleHeadings.push({ el, top });
-      } else {
-        scrolledPast.push({ el, top });
-      }
+  /**
+   * Scroll-spy: highlights in the navigation the element matching the current scroll position.
+   */
+  updateActiveNavItem() {
+    // The active element is the last one (in document order) whose top has reached the reading line,
+    // the bottom of the observer reading zone. Intersecting elements are only used as a trigger, they are not enough
+    // to decide: a heading leaves the reading zone before the next one enters it, elements can share the same top
+    // (e.g. a section and its first heading) and a large parent section can intersect while its headings do not.
+    // Positions are relative to the scrolling container, not to the browser viewport.
+    const root = this.shadowRoot!.querySelector('.main-content');
+    if (!root) {
+      return;
     }
-
-    let bestEl: Element;
-    if (visibleHeadings.length > 0) {
-      // Preference to the topmost heading visible in the viewport/reading zone
-      visibleHeadings.sort((a, b) => a.top - b.top);
-      bestEl = visibleHeadings[0]!.el;
-    } else {
-      // If all visible candidates have their headings scrolled past top (< 0),
-      // pick the one whose top is closest to 0 (the section currently filling the reading area)
-      scrolledPast.sort((a, b) => b.top - a.top);
-      bestEl = scrolledPast[0]!.el;
+    const rootRect = root.getBoundingClientRect();
+    const readingLine = rootRect.top + rootRect.height / 2;
+    const observed = Array.from(this.shadowRoot!.querySelectorAll('.observe-me')).filter((el) => el.getClientRects().length > 0);
+    const bestEl = observed.filter((el) => el.getBoundingClientRect().top <= readingLine).pop() ?? observed[0];
+    if (!bestEl) {
+      return;
     }
 
     const targetId = bestEl.id;
